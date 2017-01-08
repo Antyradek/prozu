@@ -1,5 +1,109 @@
 #!/usr/bin/perl
-use strict;     
-use warnings;  
+use strict;
+use warnings;
 
-print("Witaj\n");
+my %errors = (commandErr => -1, sysError => -2, argError => -3);
+
+#wypisz tekst
+sub printInfo
+{
+	print("$_[0]\n");
+}
+
+#wypisz błąd na czewono
+sub printError
+{
+	print(STDERR "\033[31m$_[0]\033[39m\n");
+}
+
+
+#wypisz pomoc
+sub printHelp
+{
+	printInfo("prozu - użycie");
+	printInfo("add <login>\n\tTworzy nowe konto z następującymi argumentami:");
+
+    printInfo("\tuid <uid>\n\t\tOkreśla numer użytkownika.");
+    printInfo("\tpasswd <hasło>\n\t\tOkreśla własne hasło, jeśli nie podane - generuje własne.");
+    printInfo("\tfiles <katalog>\n\t\tKatalog z którego przekopiować początkowe pliki.");
+    printInfo("\tgroup <grupa>\n\t\tGrupa w której będzie użytkownik. Można podać kilka razy.");
+}
+
+#wygeneruj losowe hasło
+sub genPassword()
+{
+    my $password = "";
+    for (my $i=0; $i <= 32; $i++)
+    {
+        $password = $password . chr(rand() * 26 + ord('a'));
+    }
+    return $password;
+}
+
+my @inputArray = @ARGV;
+my $argsCount = @ARGV;
+if($argsCount gt 0 and $ARGV[0] eq "help")
+{
+    printHelp();
+    exit $errors{commandErr};
+}
+
+my $mode = $inputArray[0];
+if($mode eq "add")
+{
+	my $login = $inputArray[1];
+    my $finalCommand = "/usr/sbin/useradd";
+    my $iter = 2;
+    my @groups;
+
+    my $password =  genPassword();
+
+    while($iter < $argsCount)
+    {
+        if($inputArray[$iter] eq "uid")
+        {
+            $finalCommand .= " --uid " . $inputArray[$iter + 1];
+        }
+        elsif($inputArray[$iter] eq "passwd")
+        {
+            $password = $inputArray[$iter + 1];
+        }
+        elsif($inputArray[$iter] eq "files")
+        {
+            $finalCommand .= " --skel " . $inputArray[$iter + 1];
+        }
+        elsif($inputArray[$iter] eq "group")
+        {
+            push(@groups, $inputArray[$iter + 1]);
+        }
+
+        $iter += 2;
+    }
+    $finalCommand .= " --password " . crypt($password, $login);
+
+    if(scalar @groups != 0)
+    {
+        $finalCommand .= " --groups ";
+        for (my $i=0; $i < scalar @groups; $i++)
+        {
+            $finalCommand .= $groups[$i];
+            if($i ne scalar @groups - 1)
+            {
+                $finalCommand .= ",";
+            }
+        }
+    }
+    $finalCommand .= " --user-group";
+    $finalCommand .= " --create-home";
+    $finalCommand .= " $login";
+
+    print(STDERR $finalCommand . "\n");
+    system($finalCommand);
+    if($? ne 0)
+    {
+        printError("Nie można dodać użytkownika");
+        exit $errors{sysError};
+    }
+    my $uid = getpwnam($login);
+    print("$login $password $uid\n");
+}
