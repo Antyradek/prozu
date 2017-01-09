@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-my %errors = (commandErr => -1, sysError => -2, argError => -3);
+my %errors = (commandErr => -1, sysError => -2, argError => -3, fileErr => -4, uidErr => -5);
 
 #wypisz tekst
 sub printInfo
@@ -64,7 +64,22 @@ if($mode eq "add")
     {
         if($inputArray[$iter] eq "uid")
         {
-            $finalCommand .= " --uid " . $inputArray[$iter + 1];
+			my $arguid = $inputArray[$iter + 1];
+			if(!open(PASSWD, "<", "/etc/passwd"))
+			{
+				printError("Nie można otworzyć /etc/passwd");
+				exit $errors{fileErr};
+			}
+			while(<PASSWD>)
+			{
+				chomp($_);
+				if(index($_, $arguid) ne -1)
+				{
+					printError("Użytkownik o podanym UID już istnieje");
+					exit $errors{uidErr};
+				}
+			}
+            $finalCommand .= " --uid " . $arguid;
         }
         elsif($inputArray[$iter] eq "passwd")
         {
