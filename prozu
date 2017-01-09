@@ -27,6 +27,8 @@ sub printHelp
     printInfo("\tpasswd <hasło>\n\t\tOkreśla własne hasło, jeśli nie podane - generuje własne.");
     printInfo("\tfiles <katalog>\n\t\tKatalog z którego przekopiować początkowe pliki.");
     printInfo("\tgroup <grupa>\n\t\tGrupa w której będzie użytkownik. Można podać kilka razy.");
+
+	printInfo("rm <login>\n\tUsuwa wszystkie dane konta.");
 }
 
 #wygeneruj losowe hasło
@@ -106,4 +108,14 @@ if($mode eq "add")
     }
     my $uid = getpwnam($login);
     print("$login $password $uid\n");
+}
+elsif($mode eq "rm")
+{
+	my $login = $inputArray[1];
+	system("/usr/sbin/userdel -r $login");
+    if($? ne 0)
+    {
+        printError("Nie można usunąć użytkownika");
+        exit $errors{sysError};
+    }
 }
